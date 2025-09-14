@@ -5,9 +5,13 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div id="mainView">
+  <div class="tab-bar">
+    <button class="tab-link active" data-tab="mainView">Download</button>
+    <button class="tab-link" data-tab="settingsView">Settings</button>
+  </div>
+
+  <div id="mainView" class="tab-content active">
     <button id="downloadChapterBtn" style="display: none;">Download Current Chapter</button>
-    
     <div id="mangaView" style="display: none;">
       <select id="languageSelect">
         <option value="gb">English</option>
@@ -17,14 +21,35 @@
         <option value="fr">French</option>
         <option value="id">Indonesian</option>
         <option value="vn">Vietnamese</option>
-        <!-- More languages can be added here -->
       </select>
       <div id="chapterList"></div>
       <button id="downloadSelectedBtn" disabled>Download Selected</button>
     </div>
-
     <div id="status">Ready</div>
   </div>
+
+  <div id="settingsView" class="tab-content">
+    <div class="setting-item">
+      <label for="concurrentChapters">Concurrent Chapters</label>
+      <input type="number" id="concurrentChapters" min="1" max="10">
+    </div>
+    <div class="setting-item">
+      <label for="concurrentImages">Concurrent Images</label>
+      <input type="number" id="concurrentImages" min="1" max="20">
+    </div>
+    <div class="setting-item">
+      <label for="retryCount">Retry Count</label>
+      <input type="number" id="retryCount" min="0" max="10">
+    </div>
+    <div class="setting-item">
+      <label for="retryDelay">Retry Delay (ms)</label>
+      <input type="number" id="retryDelay" min="500" step="100">
+    </div>
+    <button id="saveSettingsBtn">Save Settings</button>
+    <div id="settingsStatus"></div>
+  </div>
+
+  <script src="settings.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

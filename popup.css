@@ -3,8 +3,40 @@ body {
   color: #d1d5db; /* slate-300 */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   width: 350px;
-  padding: 16px;
+  padding: 0;
   margin: 0;
+}
+
+.tab-bar {
+  display: flex;
+  background-color: #374151; /* slate-700 */
+}
+
+.tab-link {
+  flex-grow: 1;
+  background: none;
+  border: none;
+  padding: 12px;
+  cursor: pointer;
+  color: #9ca3af; /* slate-400 */
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+}
+
+.tab-link.active {
+  color: white;
+  border-bottom-color: #8b5cf6; /* violet-500 */
+}
+
+.tab-content {
+  display: none;
+  padding: 16px;
+}
+
+.tab-content.active {
+  display: block;
 }
 
 button {
@@ -108,4 +140,33 @@ select:focus {
 }
 #chapterList::-webkit-scrollbar-thumb:hover {
   background: #9ca3af; /* slate-400 */
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.setting-item label {
+  font-size: 14px;
+}
+
+.setting-item input {
+  width: 80px;
+  background-color: #374151; /* slate-700 */
+  color: #d1d5db; /* slate-300 */
+  border: 1px solid #4b5563; /* slate-600 */
+  border-radius: 6px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+#settingsStatus {
+  font-size: 12px;
+  min-height: 20px;
+  text-align: center;
+  margin-top: 12px;
+  color: #10b981; /* emerald-500 */
 }
