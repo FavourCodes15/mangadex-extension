@@ -3,7 +3,8 @@ const DEFAULTS = {
   concurrentChapters: 3,
   concurrentImages: 5,
   retryCount: 3,
-  retryDelay: 1000 // ms
+  retryDelay: 1000, // ms
+  stabilityChecks: 8 // Number of 250ms intervals
 };
 
 // Get settings from storage, providing defaults if not set

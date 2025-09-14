@@ -39,62 +39,69 @@ function startDownloadProcess() {
   queueAllImages();
 }
 
-function waitForAllImages() {
-  let stableCount = 0;
-  let lastImageCount = 0;
-  let totalPages = 0;
+function init() {
+  // Fetch the user-defined settings, with a fallback to the DEFAULTS.
+  // Note: DEFAULTS is not defined here, so we must provide a default object.
+  chrome.storage.sync.get({ stabilityChecks: 8 }, (settings) => {
+    let stableCount = 0;
+    let lastImageCount = 0;
+    let totalPages = 0;
+    let hasStarted = false;
 
-  const checkInterval = setInterval(() => {
-    // Try to get total pages every time, as it might load late.
-    if (totalPages === 0) {
-      const totalPagesElement = document.querySelector('div.page-number:last-child');
-      if (totalPagesElement) {
-        totalPages = parseInt(totalPagesElement.textContent, 10);
-        console.log(`Determined total pages: ${totalPages}`);
+    console.log(`Using stability check count: ${settings.stabilityChecks}`);
+
+    const checkInterval = setInterval(() => {
+      if (hasStarted) return;
+
+      if (totalPages === 0) {
+        const totalPagesElement = document.querySelector('div.page-number:last-child');
+        if (totalPagesElement) {
+          totalPages = parseInt(totalPagesElement.textContent, 10);
+          console.log(`Determined total pages: ${totalPages}`);
+        }
       }
-    }
 
-    const loadedImages = document.querySelectorAll('img.img.ls.limit-width.limit-height');
-    
-    // --- Condition 1: We have a total page count and the loaded images match ---
-    if (totalPages > 0 && loadedImages.length >= totalPages) {
-      console.log(`Success: Loaded image count (${loadedImages.length}) matches total pages (${totalPages}).`);
-      clearInterval(checkInterval);
-      startDownloadProcess();
-      return;
-    }
-
-    // --- Condition 2 (Fallback): The number of images has stabilized ---
-    if (loadedImages.length > lastImageCount) {
-      lastImageCount = loadedImages.length;
-      stableCount = 0; // Reset stability counter
-      console.log(`Image count increased to ${lastImageCount}.`);
-    } else if (loadedImages.length > 0) {
-      stableCount++;
-      console.log(`Image count stable at ${lastImageCount}. Stability: ${stableCount}/8`);
-    }
-
-    // If stable for 20 checks (5 seconds), assume it's done.
-    if (stableCount >= 20) {
-      console.log(`Success: Image count has stabilized at ${lastImageCount}. Assuming all loaded.`);
-      clearInterval(checkInterval);
-      startDownloadProcess();
-    }
-
-  }, 250); // Check every 250ms
-
-  // Final safety net to prevent infinite loops.
-  setTimeout(() => {
-    const loadedImages = document.querySelectorAll('img.img.ls.limit-width.limit-height');
-    if (loadedImages.length > 0) {
-        console.warn("Timeout reached, but images were found. Attempting download anyway.");
+      const loadedImages = document.querySelectorAll('img.img.ls.limit-width.limit-height');
+      
+      if (totalPages > 0 && loadedImages.length >= totalPages) {
+        hasStarted = true;
+        console.log(`Success: Loaded image count (${loadedImages.length}) matches total pages (${totalPages}).`);
+        clearInterval(checkInterval);
         startDownloadProcess();
-    } else {
-        console.error("Timeout reached and no images found. Aborting this chapter.");
-        chrome.runtime.sendMessage({ action: 'chapterProcessingComplete' });
-    }
-    clearInterval(checkInterval);
-  }, 30000); // 30-second hard limit
+        return;
+      }
+
+      if (loadedImages.length > lastImageCount) {
+        lastImageCount = loadedImages.length;
+        stableCount = 0;
+        console.log(`Image count increased to ${lastImageCount}.`);
+      } else if (loadedImages.length > 0) {
+        stableCount++;
+        console.log(`Image count stable at ${lastImageCount}. Stability: ${stableCount}/${settings.stabilityChecks}`);
+      }
+
+      if (stableCount >= settings.stabilityChecks) {
+        hasStarted = true;
+        console.log(`Success: Image count has stabilized at ${lastImageCount}. Assuming all loaded.`);
+        clearInterval(checkInterval);
+        startDownloadProcess();
+      }
+    }, 250);
+
+    setTimeout(() => {
+      if (hasStarted) return;
+      hasStarted = true;
+      clearInterval(checkInterval);
+      const loadedImages = document.querySelectorAll('img.img.ls.limit-width.limit-height');
+      if (loadedImages.length > 0) {
+          console.warn("Timeout reached, but images were found. Attempting download anyway.");
+          startDownloadProcess();
+      } else {
+          console.error("Timeout reached and no images found. Aborting this chapter.");
+          chrome.runtime.sendMessage({ action: 'chapterProcessingComplete' });
+      }
+    }, 30000);
+  });
 }
 
-waitForAllImages();
+init();
