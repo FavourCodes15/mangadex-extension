@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const retryCountInput = document.getElementById('retryCount');
   const retryDelayInput = document.getElementById('retryDelay');
   const stabilityChecksInput = document.getElementById('stabilityChecks');
+  const overallTimeoutSecondsInput = document.getElementById('overallTimeoutSeconds');
   const saveSettingsBtn = document.getElementById('saveSettingsBtn');
   const settingsStatusDiv = document.getElementById('settingsStatus');
 
@@ -78,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
       concurrentImages: parseInt(concurrentImagesInput.value, 10),
       retryCount: parseInt(retryCountInput.value, 10),
       retryDelay: parseInt(retryDelayInput.value, 10),
-      stabilityChecks: parseInt(stabilityChecksInput.value, 10)
+      stabilityChecks: parseInt(stabilityChecksInput.value, 10),
+      overallTimeoutSeconds: parseInt(overallTimeoutSecondsInput.value, 10)
     };
     await saveSettings(newSettings);
     settingsStatusDiv.textContent = 'Settings saved!';
@@ -93,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     retryCountInput.value = settings.retryCount;
     retryDelayInput.value = settings.retryDelay;
     stabilityChecksInput.value = settings.stabilityChecks;
+    overallTimeoutSecondsInput.value = settings.overallTimeoutSeconds;
   }
   
   const messageListener = (request, sender) => {

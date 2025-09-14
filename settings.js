@@ -4,7 +4,8 @@ const DEFAULTS = {
   concurrentImages: 5,
   retryCount: 3,
   retryDelay: 1000, // ms
-  stabilityChecks: 8 // Number of 250ms intervals
+  stabilityChecks: 8, // Number of 250ms intervals
+  overallTimeoutSeconds: 30 // seconds
 };
 
 // Get settings from storage, providing defaults if not set
