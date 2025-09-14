@@ -59,6 +59,22 @@ function startDownloadProcess() {
 
 let observer;
 let imageLoadTimeout;
+let settings;
+
+// Fetch settings first
+chrome.storage.sync.get({ imageLoadDelay: 10000 }, (loadedSettings) => {
+  settings = loadedSettings;
+  console.log(`Using image load delay: ${settings.imageLoadDelay}ms`);
+  
+  // Initial check once settings are loaded
+  debounceStartDownload();
+  
+  // Start observing
+  observer = new MutationObserver(() => {
+    debounceStartDownload();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+});
 
 function debounceStartDownload() {
     clearTimeout(imageLoadTimeout);
@@ -66,14 +82,5 @@ function debounceStartDownload() {
         console.log('Image loading settled. Starting download process.');
         if (observer) observer.disconnect();
         startDownloadProcess();
-    }, 20000); // Wait 2.5 seconds after the last image detection
+    }, settings.imageLoadDelay);
 }
-
-observer = new MutationObserver(() => {
-    debounceStartDownload();
-});
-
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Initial check
-debounceStartDownload();
