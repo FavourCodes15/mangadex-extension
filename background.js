@@ -1,4 +1,4 @@
-importScripts('lib/jszip.min.js', 'zip.js', 'cbz.js');
+importScripts('lib/jszip.min.js');
 
 // --- Global State ---
 let settings = {};
@@ -11,7 +11,9 @@ const DEFAULTS = {
   concurrentChapters: 3,
   concurrentImages: 5,
   retryCount: 3,
-  retryDelay: 1000
+  retryDelay: 1000, // ms
+  stabilityChecks: 8, // Number of 250ms intervals
+  overallTimeoutSeconds: 30 // seconds
 };
 
 async function getSettings() {
@@ -33,8 +35,9 @@ loadSettings();
 chrome.storage.onChanged.addListener(loadSettings);
 
 // Listen for messages from the popup or content scripts
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.action === 'downloadAllChapters') {
+    await loadSettings(); // Ensure settings are fresh
     // Add new chapters to the front of the queue
     chapterQueue.unshift(...request.chapters);
     console.log(`Added ${request.chapters.length} chapters to the queue. Total: ${chapterQueue.length}`);
@@ -44,6 +47,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // This action will be called from the content script for each image
         downloadImageWithRetry(request.url, request.filename, settings.retryCount);
     }
+  } else if (request.action === 'downloadPdf') {
+   chrome.downloads.download({
+     url: request.url,
+     filename: request.filename
+   });
   }
   return true; // Indicate async response
 });
@@ -79,9 +87,11 @@ async function processChapter(chapter) {
                 if (sender.tab && sender.tab.id === tabId && request.action === 'chapterProcessingComplete') {
                     console.log(`Chapter processing complete for tab ${tabId}.`);
                     if (settings.downloadAs === 'zip') {
-                        createZip(request.imageUrls, chapter.mangaTitle, chapter);
+                        createArchive(request.imageUrls, chapter.mangaTitle, chapter, 'zip');
                     } else if (settings.downloadAs === 'cbz') {
-                        createCbz(request.imageUrls, chapter.mangaTitle, chapter);
+                        createArchive(request.imageUrls, chapter.mangaTitle, chapter, 'cbz');
+                    } else if (settings.downloadAs === 'pdf') {
+                        createPdfOffscreen(request.imageUrls, chapter.mangaTitle, chapter);
                     }
 
                     // Only close the tab if we created a new one
@@ -122,6 +132,47 @@ async function processChapter(chapter) {
         activeChapterWorkers--;
         processChapterQueue();
     }
+}
+
+async function createArchive(imageUrls, mangaTitle, chapter, type) {
+    const zip = new JSZip();
+    const chapterFolder = zip.folder(chapter.name);
+
+    const imagePromises = imageUrls.map(async (url, index) => {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const filename = `${String(index + 1).padStart(3, '0')}.${blob.type.split('/')[1]}`;
+        chapterFolder.file(filename, blob);
+    });
+
+    await Promise.all(imagePromises);
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const filename = `${mangaTitle} - ${chapter.name}.${type}`;
+
+    const reader = new FileReader();
+    reader.onload = function() {
+        chrome.downloads.download({
+            url: reader.result,
+            filename: filename
+        });
+    };
+    reader.readAsDataURL(zipBlob);
+}
+
+async function createPdfOffscreen(imageUrls, mangaTitle, chapter) {
+    await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['BLOBS'],
+        justification: 'Needed to convert images to PDF format.',
+    });
+
+    chrome.runtime.sendMessage({
+        action: 'createPdfOffscreen',
+        imageUrls,
+        mangaTitle,
+        chapter,
+    });
 }
 
 async function downloadImageWithRetry(url, filename, retries) {
