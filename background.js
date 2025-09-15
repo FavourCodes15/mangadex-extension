@@ -90,8 +90,6 @@ async function processChapter(chapter) {
                     console.log(`Chapter processing complete for tab ${tabId}.`);
                     if (settings.downloadAs === 'zip') {
                         createArchive(request.imageUrls, chapter.mangaTitle, chapter, 'zip');
-                    } else if (settings.downloadAs === 'cbz') {
-                        createArchive(request.imageUrls, chapter.mangaTitle, chapter, 'cbz');
                     } else if (settings.downloadAs === 'pdf') {
                         createPdfOffscreen(request.imageUrls, chapter.mangaTitle, chapter);
                     }
