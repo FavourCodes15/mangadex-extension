@@ -25,9 +25,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     });
 
+    const mangaTitleElement = document.querySelector('span.text-2xl.font-bold');
+    const mangaTitle = mangaTitleElement ? mangaTitleElement.textContent.trim().replace(/[<>:"/\\|?*]+/g, '') : 'Manga';
+
     // Send the structured chapter list back to the popup.
     chrome.runtime.sendMessage({
       action: 'chapterList',
+      mangaTitle: mangaTitle,
       chapters: chapters.reverse() // Reverse to show Chapter 1 at the top.
     });
   }

@@ -1,3 +1,5 @@
+importScripts('lib/jszip.min.js', 'zip.js', 'cbz.js');
+
 // --- Global State ---
 let settings = {};
 let chapterQueue = [];
@@ -5,6 +7,7 @@ let activeChapterWorkers = 0;
 
 // --- Utility Functions ---
 const DEFAULTS = {
+  downloadAs: 'images',
   concurrentChapters: 3,
   concurrentImages: 5,
   retryCount: 3,
@@ -33,12 +36,14 @@ chrome.storage.onChanged.addListener(loadSettings);
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'downloadAllChapters') {
     // Add new chapters to the front of the queue
-    chapterQueue.unshift(...request.chapterUrls);
-    console.log(`Added ${request.chapterUrls.length} chapters to the queue. Total: ${chapterQueue.length}`);
+    chapterQueue.unshift(...request.chapters);
+    console.log(`Added ${request.chapters.length} chapters to the queue. Total: ${chapterQueue.length}`);
     processChapterQueue();
   } else if (request.action === 'queueImageDownload') {
-    // This action will be called from the content script for each image
-    downloadImageWithRetry(request.url, request.filename, settings.retryCount);
+    if (settings.downloadAs === 'images') {
+        // This action will be called from the content script for each image
+        downloadImageWithRetry(request.url, request.filename, settings.retryCount);
+    }
   }
   return true; // Indicate async response
 });
@@ -47,9 +52,9 @@ function processChapterQueue() {
   console.log(`Processing queue. Workers: ${activeChapterWorkers}/${settings.concurrentChapters}. Queue size: ${chapterQueue.length}`);
   while (activeChapterWorkers < settings.concurrentChapters && chapterQueue.length > 0) {
     activeChapterWorkers++;
-    const chapterUrl = chapterQueue.pop();
-    console.log(`Starting worker for: ${chapterUrl}`);
-    processChapter(chapterUrl);
+    const chapter = chapterQueue.pop();
+    console.log(`Starting worker for: ${chapter.url}`);
+    processChapter(chapter);
   }
 
   if (chapterQueue.length === 0 && activeChapterWorkers === 0) {
@@ -57,43 +62,66 @@ function processChapterQueue() {
   }
 }
 
-async function processChapter(chapterUrl) {
-  try {
-    const tab = await new Promise(resolve => chrome.tabs.create({ url: chapterUrl, active: false }, resolve));
-    
-    // Listen for tab completion
-    const tabUpdateListener = (tabId, info) => {
-      if (tabId === tab.id && info.status === 'complete') {
-        console.log(`Tab ${tab.id} loaded. Injecting content script.`);
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js'],
-        });
-        chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-      }
-    };
-    chrome.tabs.onUpdated.addListener(tabUpdateListener);
+async function processChapter(chapter) {
+    try {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // Add a listener for when the content script is done
-    const messageListener = (request, sender) => {
-      if (sender.tab && sender.tab.id === tab.id && request.action === 'chapterProcessingComplete') {
-        console.log(`Chapter processing complete for tab ${tab.id}. Closing.`);
-        chrome.tabs.remove(tab.id);
-        chrome.runtime.onMessage.removeListener(messageListener);
-        
-        // Worker is now free
+        // If the active tab is the one we want to process, use it directly.
+        // Otherwise, open a new background tab.
+        const shouldUseActiveTab = activeTab && activeTab.url.includes(chapter.url);
+
+        const tabToUse = shouldUseActiveTab
+            ? activeTab
+            : await new Promise(resolve => chrome.tabs.create({ url: chapter.url, active: false }, resolve));
+
+        const processAndCleanup = (tabId) => {
+            const messageListener = (request, sender) => {
+                if (sender.tab && sender.tab.id === tabId && request.action === 'chapterProcessingComplete') {
+                    console.log(`Chapter processing complete for tab ${tabId}.`);
+                    if (settings.downloadAs === 'zip') {
+                        createZip(request.imageUrls, chapter.mangaTitle, chapter);
+                    } else if (settings.downloadAs === 'cbz') {
+                        createCbz(request.imageUrls, chapter.mangaTitle, chapter);
+                    }
+
+                    // Only close the tab if we created a new one
+                    if (!shouldUseActiveTab) {
+                        chrome.tabs.remove(tabId);
+                    }
+                    chrome.runtime.onMessage.removeListener(messageListener);
+
+                    activeChapterWorkers--;
+                    processChapterQueue();
+                }
+            };
+            chrome.runtime.onMessage.addListener(messageListener);
+
+            chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                files: ['content.js'],
+            });
+        };
+
+        if (shouldUseActiveTab) {
+            console.log(`Using active tab ${tabToUse.id} for processing.`);
+            processAndCleanup(tabToUse.id);
+        } else {
+            // Listen for the new tab to finish loading before injecting script
+            const tabUpdateListener = (tabId, info) => {
+                if (tabId === tabToUse.id && info.status === 'complete') {
+                    console.log(`Tab ${tabId} loaded. Injecting content script.`);
+                    processAndCleanup(tabId);
+                    chrome.tabs.onUpdated.removeListener(tabUpdateListener);
+                }
+            };
+            chrome.tabs.onUpdated.addListener(tabUpdateListener);
+        }
+
+    } catch (error) {
+        console.error(`Error processing chapter ${chapter.url}:`, error);
         activeChapterWorkers--;
-        // Check if more chapters are in the queue
         processChapterQueue();
-      }
-    };
-    chrome.runtime.onMessage.addListener(messageListener);
-
-  } catch (error) {
-    console.error(`Error processing chapter ${chapterUrl}:`, error);
-    activeChapterWorkers--;
-    processChapterQueue();
-  }
+    }
 }
 
 async function downloadImageWithRetry(url, filename, retries) {

@@ -1,5 +1,6 @@
 // Default settings
 const DEFAULTS = {
+  downloadAs: 'images',
   concurrentChapters: 3,
   concurrentImages: 5,
   retryCount: 3,

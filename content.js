@@ -1,49 +1,52 @@
-function startDownloadProcess() {
+function startDownloadProcess(settings) {
   const images = document.querySelectorAll('img.img.ls.limit-width.limit-height');
-  
-  console.log(`Found ${images.length} images. Queuing for download.`);
-  
-  const mangaTitleElement = document.querySelector('a.reader--header-manga');
-  const chapterTitleElement = document.querySelector('div.reader--header-title');
-  const mangaTitle = mangaTitleElement ? mangaTitleElement.textContent.trim().replace(/[<>:"/\\|?*]+/g, '') : 'Manga';
-  const chapterTitle = chapterTitleElement ? chapterTitleElement.textContent.trim().replace(/[<>:"/\\|?*]+/g, '') : 'Chapter';
-  const folderName = `${mangaTitle}/${chapterTitle}`;
+  console.log(`Found ${images.length} images.`);
 
-  const queueAllImages = async () => {
-    const imagePromises = Array.from(images).map(async (img, index) => {
-      const blobUrl = img.src;
-      if (blobUrl.startsWith('blob:')) {
-        try {
-          const response = await fetch(blobUrl);
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const filename = `${folderName}/${(index + 1).toString().padStart(3, '0')}.png`;
-          
-          chrome.runtime.sendMessage({
-            action: 'queueImageDownload',
-            url: url,
-            filename: filename
-          });
-        } catch (error) {
-          console.error(`Failed to process blob for image ${index + 1}:`, error);
+  if (settings.downloadAs === 'images') {
+    console.log('Queuing images for individual download.');
+    const mangaTitleElement = document.querySelector('a.reader--header-manga');
+    const chapterTitleElement = document.querySelector('div.reader--header-title');
+    const mangaTitle = mangaTitleElement ? mangaTitleElement.textContent.trim().replace(/[<>:"/\\|?*]+/g, '') : 'Manga';
+    const chapterTitle = chapterTitleElement ? chapterTitleElement.textContent.trim().replace(/[<>:"/\\|?*]+/g, '') : 'Chapter';
+    const folderName = `${mangaTitle}/${chapterTitle}`;
+
+    const queueImageDownloads = async () => {
+      const imagePromises = Array.from(images).map(async (img, index) => {
+        const blobUrl = img.src;
+        if (blobUrl.startsWith('blob:')) {
+          try {
+            const response = await fetch(blobUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const filename = `${folderName}/${(index + 1).toString().padStart(3, '0')}.png`;
+            chrome.runtime.sendMessage({
+              action: 'queueImageDownload',
+              url: url,
+              filename: filename
+            });
+          } catch (error) {
+            console.error(`Failed to process blob for image ${index + 1}:`, error);
+          }
         }
-      }
-    });
+      });
+      await Promise.all(imagePromises);
+      console.log(`All ${images.length} images for this chapter have been queued.`);
+      chrome.runtime.sendMessage({ action: 'chapterProcessingComplete', imageUrls: [] }); // Send empty array for consistency
+    };
+    queueImageDownloads();
 
-    await Promise.all(imagePromises);
-    
-    console.log(`All ${images.length} images for this chapter have been queued.`);
-    chrome.runtime.sendMessage({ action: 'chapterProcessingComplete' });
-  };
-
-  queueAllImages();
+  } else {
+    console.log('Collecting image URLs for archival.');
+    const imageUrls = Array.from(images).map(img => img.src);
+    chrome.runtime.sendMessage({ action: 'chapterProcessingComplete', imageUrls: imageUrls });
+  }
 }
 
 function init() {
   // Fetch the user-defined settings, with a fallback to the DEFAULTS.
   // Note: DEFAULTS is not defined here, so we must provide a default object.
   // Fetch all relevant settings
-  chrome.storage.sync.get({ stabilityChecks: 8, overallTimeoutSeconds: 30 }, (settings) => {
+  chrome.storage.sync.get({ downloadAs: 'images', stabilityChecks: 8, overallTimeoutSeconds: 30 }, (settings) => {
     let stableCount = 0;
     let lastImageCount = 0;
     let totalPages = -1; // Use -1 to indicate "not yet determined"
@@ -78,7 +81,7 @@ function init() {
         hasStarted = true;
         clearInterval(checkInterval);
         clearTimeout(safetyTimeout);
-        startDownloadProcess();
+        startDownloadProcess(settings);
         return;
       }
 
@@ -97,7 +100,7 @@ function init() {
         hasStarted = true;
         clearInterval(checkInterval);
         clearTimeout(safetyTimeout);
-        startDownloadProcess();
+        startDownloadProcess(settings);
       }
     }, 250);
 
@@ -114,7 +117,7 @@ function init() {
       
       if (loadedImages.length > 0) {
           console.warn(`TIMEOUT: Found ${loadedImages.length} images. Attempting download anyway.`);
-          startDownloadProcess();
+          startDownloadProcess(settings);
       } else {
           console.error("TIMEOUT: No images found. Aborting this chapter.");
           chrome.runtime.sendMessage({ action: 'chapterProcessingComplete' });
