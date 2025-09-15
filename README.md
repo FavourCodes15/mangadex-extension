@@ -1,72 +1,69 @@
-# MangaDex Downloader Extension
+# MangaDex Downloader
 
-A powerful and customizable browser extension to download manga chapters from MangaDex.
+A powerful and customizable browser extension to download manga chapters from MangaDex in various formats.
+
+![Extension Screenshot](extension.PNG)
 
 ## Features
 
--   **Download Current Chapter:** Quickly download all images from the chapter you are currently viewing.
--   **Selective Chapter Download:** On a manga's main information page, view a list of all available chapters, filter them by language, and select specific chapters to download.
--   **Configurable Concurrency:** Adjust the number of simultaneous chapter and image downloads to optimize for your internet speed and system resources.
--   **Robust Retry Mechanism:** Automatically retries failed image downloads, ensuring a more complete and reliable download experience.
--   **Intelligent Page Detection:** Smartly detects when all images on a chapter page have loaded before initiating the download, preventing incomplete downloads.
--   **Organized Folder Structure:** Downloads are saved into a clear folder structure: `Manga Title/Chapter Name/`.
--   **Configurable Stability Checks:** Fine-tune the image loading detection by setting how many consecutive checks the image count must remain stable before assuming all pages are loaded.
--   **Configurable Overall Timeout:** Adjust the maximum time the extension waits for a chapter to load its images, useful for very large chapters or slow connections.
--   **Modern User Interface:** A sleek, dark-themed popup interface with intuitive controls.
+-   **Multiple Download Formats:** Save chapters as individual **Images**, compressed **ZIP** archives, or portable **PDF** documents.
+-   **Bulk & Single Chapter Downloads:** Quickly download the chapter you are currently viewing or queue multiple chapters for download from a manga's main page.
+-   **Language Filtering:** Easily find and download chapters in your preferred language.
+-   **Advanced Concurrency Control:** Fine-tune the number of simultaneous chapter and image downloads to match your network speed and system capabilities.
+-   **Robust Download Engine:** Features an automatic retry mechanism for failed images and intelligent page-load detection to prevent incomplete downloads.
+-   **Organized File Structure:** Chapters are saved into a clean, easy-to-navigate folder structure: `Manga Title/Chapter Name/`.
+-   **Modern & Intuitive UI:** A sleek, dark-themed popup interface that is easy to use.
 
 ## Installation
 
-1.  **Download/Clone:** Download or clone this repository to your local machine.
-2.  **Open Extensions:** Open your browser's extension management page.
-    -   For Chrome: Go to `chrome://extensions`
-    -   For Edge: Go to `edge://extensions`
-    -   For Brave: Go to `brave://extensions`
-3.  **Enable Developer Mode:** Toggle on "Developer mode" in the top-right corner.
-4.  **Load Unpacked:** Click the "Load unpacked" button (usually in the top-left or top-right).
-5.  **Select Directory:** Navigate to and select the directory where you downloaded/cloned this extension.
+1.  **Download the code:** Download this repository as a ZIP file and extract it, or clone it from `https://github.com/Yui007/mangadex-extension`.
+2.  **Open Browser Extensions:**
+    -   **Chrome/Brave:** Navigate to `chrome://extensions`
+    -   **Edge:** Navigate to `edge://extensions`
+3.  **Enable Developer Mode:** Find and enable the "Developer mode" toggle, usually located in the top-right corner.
+4.  **Load the Extension:** Click the **"Load unpacked"** button and select the directory where you extracted/cloned the code.
 
-The extension should now appear in your browser's toolbar.
+The MangaDex Downloader icon will now appear in your browser's toolbar.
 
-## Usage
+## How to Use
 
-1.  **Navigate to MangaDex:** Go to `https://mangadex.org/` in your browser.
-2.  **Open the Extension:** Click on the MangaDex Downloader icon in your browser's toolbar.
+### On a Chapter Page (`mangadex.org/chapter/...`)
 
-### On a Chapter Page
+1.  Navigate to any manga chapter on MangaDex.
+2.  Click the extension icon in your toolbar.
+3.  Click the **"Download Current Chapter"** button. The chapter will be downloaded in the format specified in your settings.
 
--   If you are on a specific chapter page (e.g., `mangadex.org/chapter/...`), the popup will display a "Download Current Chapter" button.
--   Click this button to download all images for that chapter. They will be saved into a folder named after the manga and chapter.
+### On a Manga Title Page (`mangadex.org/title/...`)
 
-### On a Manga Information Page
-
--   If you are on a manga's main information page (e.g., `mangadex.org/title/...`), the popup will display:
-    -   A **language selection dropdown**. Choose your preferred language.
-    -   A **list of chapters** available in the selected language, with checkboxes.
-    -   A "Download Selected" button.
--   **Select Chapters:** Check the boxes next to the chapters you wish to download.
--   **Start Download:** Click "Download Selected". The chapters will be downloaded sequentially in the background.
+1.  Navigate to the main page for any manga series.
+2.  Click the extension icon.
+3.  Use the **language dropdown** to filter the chapter list.
+4.  **Check the boxes** next to the chapters you wish to download.
+5.  Click the **"Download Selected"** button. The chapters will be added to a queue and downloaded in the background.
 
 ## Settings
 
-Access the "Settings" tab in the extension popup to customize the following:
+Click the **"Settings"** tab in the extension popup to configure the following options:
 
--   **Concurrent Chapters:** The number of chapters that will be processed simultaneously.
--   **Concurrent Images:** The number of images that will be downloaded simultaneously within a chapter.
--   **Retry Count:** How many times the extension will attempt to re-download a failed image.
--   **Retry Delay (ms):** The delay (in milliseconds) before retrying a failed image download.
--   **Stability Checks:** The number of consecutive checks the image count must remain stable before assuming all images are loaded (each check is 250ms). Increase this for slower connections or pages with lazy-loading issues.
--   **Overall Timeout (s):** The maximum time (in seconds) the extension will wait for a chapter's images to load before forcing a download of what's available or aborting if no images are found.
+-   **Download As:** Choose the format for your downloads:
+    -   `Images`: Saves each page as a separate image file (e.g., .png).
+    -   `ZIP`: Compresses the entire chapter into a single `.zip` file.
+    -   `PDF`: Compiles all chapter pages into a single `.pdf` document.
+-   **Concurrent Chapters:** The number of chapters to process simultaneously (default: 3).
+-   **Concurrent Images:** The number of images to download at the same time (for `Images` mode only, default: 5).
+-   **Retry Count:** How many times to retry a failed image download (default: 3).
+-   **Retry Delay (ms):** The wait time in milliseconds before a retry attempt (default: 1000).
+-   **Stability Checks:** The number of 250ms intervals the page must be stable before starting a download. Increase this if chapters are not fully loading.
+-   **Overall Timeout (s):** The maximum time to wait for a chapter's images to load.
 
-Remember to click "Save Settings" after making changes.
+Remember to click **"Save Settings"** after making any changes.
 
 ## Troubleshooting
 
--   **"No images found" or incomplete downloads:**
-    -   Increase "Stability Checks" in the settings.
-    -   Increase "Overall Timeout (s)" in the settings.
--   **Downloads not starting:** Ensure you are on a valid `mangadex.org` chapter or title page.
--   **Browser blocking downloads:** Check your browser's download settings or temporary disable any download managers.
+-   **Incomplete downloads or "No images found":** Try increasing the "Stability Checks" and "Overall Timeout (s)" values in the settings. This is often necessary for very long chapters or on slower connections.
+-   **Browser blocking downloads:** The extension may trigger your browser's protection against downloading multiple files at once. If prompted, always choose to "Allow" the downloads.
+-   **Extension not working:** Ensure you are on a valid `mangadex.org` chapter or title page and reload the page.
 
 ## Contributing
 
-Feel free to open issues or pull requests on the GitHub repository if you find bugs or have suggestions for new features.
+Contributions are welcome! Feel free to open an issue or submit a pull request for any bugs, improvements, or feature suggestions on the [GitHub repository](https://github.com/Yui007/mangadex-extension).
