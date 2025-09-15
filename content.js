@@ -36,9 +36,29 @@ function startDownloadProcess(settings) {
     queueImageDownloads();
 
   } else {
-    console.log('Collecting image URLs for archival.');
-    const imageUrls = Array.from(images).map(img => img.src);
-    chrome.runtime.sendMessage({ action: 'chapterProcessingComplete', imageUrls: imageUrls });
+    console.log('Collecting image data URLs for archival.');
+    const imagePromises = Array.from(images).map(img => {
+      return new Promise(async (resolve) => {
+        try {
+          const response = await fetch(img.src);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null); // Resolve with null on error
+          reader.readAsDataURL(blob);
+        } catch (e) {
+          console.error('Failed to fetch image for data URL conversion:', e);
+          resolve(null);
+        }
+      });
+    });
+
+    Promise.all(imagePromises).then(dataUrls => {
+      // Filter out any nulls from failed conversions
+      const validDataUrls = dataUrls.filter(url => url !== null);
+      console.log(`Sending ${validDataUrls.length} data URLs to background script.`);
+      chrome.runtime.sendMessage({ action: 'chapterProcessingComplete', imageUrls: validDataUrls });
+    });
   }
 }
 

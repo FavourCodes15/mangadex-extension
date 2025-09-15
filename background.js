@@ -52,6 +52,8 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
      url: request.url,
      filename: request.filename
    });
+   // Close the offscreen document after the download is initiated
+   chrome.offscreen.closeDocument();
   }
   return true; // Indicate async response
 });
@@ -160,13 +162,37 @@ async function createArchive(imageUrls, mangaTitle, chapter, type) {
     reader.readAsDataURL(zipBlob);
 }
 
-async function createPdfOffscreen(imageUrls, mangaTitle, chapter) {
-    await chrome.offscreen.createDocument({
-        url: 'offscreen.html',
-        reasons: ['BLOBS'],
-        justification: 'Needed to convert images to PDF format.',
-    });
+// A global promise to manage the offscreen document lifecycle
+let creating;
 
+async function createPdfOffscreen(imageUrls, mangaTitle, chapter) {
+    // Check if an offscreen document is already available.
+    if (await chrome.offscreen.hasDocument()) {
+        console.log("Offscreen document already exists. Sending message.");
+        chrome.runtime.sendMessage({
+            action: 'createPdfOffscreen',
+            imageUrls,
+            mangaTitle,
+            chapter,
+        });
+        return;
+    }
+
+    // If we're in the process of creating a document, wait for it to finish.
+    if (creating) {
+        await creating;
+    } else {
+        creating = chrome.offscreen.createDocument({
+            url: 'offscreen.html',
+            reasons: ['BLOBS'],
+            justification: 'Needed to convert images to PDF format.',
+        });
+        await creating;
+        creating = null; // Reset the promise
+    }
+    
+    console.log("Offscreen document created. Sending message.");
+    // Now that the document is confirmed to exist, send the message
     chrome.runtime.sendMessage({
         action: 'createPdfOffscreen',
         imageUrls,
